@@ -1,26 +1,24 @@
-# day 7 with R6 
-
-library(tidyverse)
+# day 7 - part 2 with R6 
+# feedback
 library(R6)
 
-# an amplifier program
-ACT <- c(3,31,3,32,1002,32,10,32,1001,31,-2,31,1007,31,0,33,1002,33,7,33,1,33,31,31,1,32,31,31,4,31,99,0,0,0)
+# program must pause
 
 Amp <- R6Class("Amp",
   public = list(
     pgm = NULL,
     ptr = NULL,
     phase = NULL,
-    halt = NULL,
+    halt = FALSE,
     
     # initialize the Amp with a phase setting
-    initialize = function(pgm, ptr = 0, phase) {
-      stopifnot(phase %in% 0:4)
+    initialize = function(pgm, phase) {
+      # stopifnot(phase %in% 0:4)
       self$pgm <- pgm
-      self$ptr <- ptr
-      self$phase <- phase
+      self$ptr <- 0
+      self$phase <- phase # don't really need this 
       
-      self$pgm[self$pgm[2] + 1] <- self$phase
+      self$pgm[self$pgm[2] + 1] <- phase
       self$ptr <- self$ptr + 2
     },
     
@@ -31,11 +29,11 @@ Amp <- R6Class("Amp",
     run = function(input) {
       input_available <- TRUE
       output_collected <- FALSE
-      Opcode <- self$pgm[self$pgm[self$ptr + 1] + 1] 
-      
-      while(TRUE) {
+
+      while(TRUE) {  # break() will exit the loop
         
         Opcode <- self$pgm[self$ptr + 1] %% 100
+        
         if(Opcode == 99) {
           self$halt <- TRUE
           break()
@@ -60,12 +58,11 @@ Amp <- R6Class("Amp",
           
         } else if(Opcode == 3) {
           if(input_available) {
-            self$pgm[values[1]] <- input
+            self$pgm[values[1]] <- input # consume the input
             self$ptr <- self$ptr + 2
             input_available <- FALSE
           } else {
-            if(output_collected) return(output)
-            else return("No output")
+            break() # return the output and "pause"
           }
           
         } else if(Opcode == 4) {
@@ -73,20 +70,20 @@ Amp <- R6Class("Amp",
           self$ptr <- self$ptr + 2
           output_collected <- TRUE
           
-        } else if(Opcode == 5) {
+        } else if(Opcode == 5) { # jump if true
           if(self$pgm[values[1]] != 0) self$ptr <- self$pgm[values[2]] 
           else self$ptr <- self$ptr + 3
           
-        } else if(Opcode == 6) {
+        } else if(Opcode == 6) { # jump if false
           if(self$pgm[values[1]] == 0) self$ptr <- self$pgm[values[2]]
           else self$ptr <- self$ptr + 3
           
-        } else if(Opcode == 7) {
+        } else if(Opcode == 7) { # 1 less than 2
           if(self$pgm[values[1]] < self$pgm[values[2]]) self$pgm[values[3]] <- 1
           else self$pgm[values[3]] <- 0
           self$ptr <- self$ptr + 4
           
-        } else if(Opcode == 8) {
+        } else if(Opcode == 8) { # 1 equal to 2
           if(self$pgm[values[1]] == self$pgm[values[2]]) self$pgm[values[3]] <- 1
           else self$pgm[values[3]] <- 0
           self$ptr <- self$ptr + 4  
@@ -102,40 +99,58 @@ Amp <- R6Class("Amp",
   )
 )
 
-A <- Amp$new(ACT, phase = 4)$run(0)
+Amp$new(c(3,26,1001,26,-4,26,3,27,1002,27,2,27,1,27,26,27,4,27,1001,28,-1,28,1005,28,6,99,0,0,5), phase = 9)$halt
+Amp$new(c(3,26,1001,26,-4,26,3,27,1002,27,2,27,1,27,26,27,4,27,1001,28,-1,28,1005,28,6,99,0,0,5), phase = 9)$pgm
 
-A$ptr  
-A$phase
-B$phase
-
-ACT[32]
-A$pgm[32]
-B$pgm[32]
-A$ptr
-B$ptr
-
-A$run(0)  
-A$halt
-A$ptr
-B$run(0)
-B$halt
-B$ptr
-
-
-
-thruster <- function(ACT, phase = phase_sequence) {
-  A <- Amp$new(ACT, phase = phase_sequence[1])$run(0)
-  B <- Amp$new(ACT, phase = phase_sequence[2])$run(A)
-  C <- Amp$new(ACT, phase = phase_sequence[3])$run(B) 
-  D <- Amp$new(ACT, phase = phase_sequence[4])$run(C)   
-  E <- Amp$new(ACT, phase = phase_sequence[5])$run(D)
+# Add feedback loop
+thruster <- function(ACT, phase) {
+  # create the Amps
+  AmpA <- Amp$new(ACT, phase = phase[1])
+  AmpB <- Amp$new(ACT, phase = phase[2])
+  AmpC <- Amp$new(ACT, phase = phase[3])
+  AmpD <- Amp$new(ACT, phase = phase[4])
+  AmpE <- Amp$new(ACT, phase = phase[5])
+  
+  # Start off with input 0
+  # Run in a loop until A halts
+  E <- 0
+  while(AmpA$halt == FALSE) {
+  A <- AmpA$run(E)
+  B <- AmpB$run(A)
+  C <- AmpC$run(B) 
+  D <- AmpD$run(C)   
+  E <- AmpE$run(D)
+  }
   return(E)
+  }
+
+thruster(c(3,26,1001,26,-4,26,3,27,1002,27,2,27,1,27,26,
+           27,4,27,1001,28,-1,28,1005,28,6,99,0,0,5),
+         c(9,8,7,6,5)) # 139629729.  YES!
+
+thruster(c(3,52,1001,52,-5,52,3,53,1,52,56,54,1007,54,5,55,1005,55,26,1001,54,
+           -5,54,1105,1,12,1,53,54,53,1008,54,0,55,1001,55,1,55,2,53,55,53,4,
+           53,1001,56,-1,56,1005,56,6,99,0,0,0,0,10),
+         c(9,7,8,5,6)) # 18216.  YES!
+
+# Bug was in 
+# self$pgm[self$pgm[2] + 1] <- self$phase  should be
+# self$pgm[self$pgm[2] + 1] <- phase  sublte!
+
+perm <- function(v) {
+  n <- length(v)
+  if (n == 1) v
+  else {
+    X <- NULL
+    for (i in 1:n) X <- rbind(X, cbind(v[i], perm(v[-i])))
+    X
+  }
 }
-thruster(ACT, phase = phase_sequence[1, ])
-
-# Find max thruster output
-
+phase_sequence <- perm(5:9)
+nrow(phase_sequence)
 thruster_output <- as.vector(120)
+
+ACT <- c(3,8,1001,8,10,8,105,1,0,0,21,34,59,68,89,102,183,264,345,426,99999,3,9,102,5,9,9,1001,9,5,9,4,9,99,3,9,101,3,9,9,1002,9,5,9,101,5,9,9,1002,9,3,9,1001,9,5,9,4,9,99,3,9,101,5,9,9,4,9,99,3,9,102,4,9,9,101,3,9,9,102,5,9,9,101,4,9,9,4,9,99,3,9,1002,9,5,9,1001,9,2,9,4,9,99,3,9,1002,9,2,9,4,9,3,9,101,2,9,9,4,9,3,9,1001,9,2,9,4,9,3,9,101,1,9,9,4,9,3,9,102,2,9,9,4,9,3,9,1001,9,2,9,4,9,3,9,1001,9,2,9,4,9,3,9,1001,9,2,9,4,9,3,9,1001,9,2,9,4,9,3,9,102,2,9,9,4,9,99,3,9,1001,9,1,9,4,9,3,9,102,2,9,9,4,9,3,9,102,2,9,9,4,9,3,9,101,1,9,9,4,9,3,9,101,1,9,9,4,9,3,9,102,2,9,9,4,9,3,9,102,2,9,9,4,9,3,9,101,1,9,9,4,9,3,9,1001,9,2,9,4,9,3,9,1001,9,2,9,4,9,99,3,9,1002,9,2,9,4,9,3,9,102,2,9,9,4,9,3,9,102,2,9,9,4,9,3,9,1001,9,2,9,4,9,3,9,1001,9,2,9,4,9,3,9,102,2,9,9,4,9,3,9,101,1,9,9,4,9,3,9,1001,9,1,9,4,9,3,9,1002,9,2,9,4,9,3,9,102,2,9,9,4,9,99,3,9,101,1,9,9,4,9,3,9,1002,9,2,9,4,9,3,9,102,2,9,9,4,9,3,9,1002,9,2,9,4,9,3,9,102,2,9,9,4,9,3,9,1002,9,2,9,4,9,3,9,102,2,9,9,4,9,3,9,1002,9,2,9,4,9,3,9,101,1,9,9,4,9,3,9,101,2,9,9,4,9,99,3,9,1001,9,1,9,4,9,3,9,1001,9,2,9,4,9,3,9,101,1,9,9,4,9,3,9,102,2,9,9,4,9,3,9,1001,9,2,9,4,9,3,9,1002,9,2,9,4,9,3,9,101,1,9,9,4,9,3,9,1001,9,1,9,4,9,3,9,1001,9,2,9,4,9,3,9,1002,9,2,9,4,9,99)
 i <- 1 
 while(i <= 120) {
   thruster_output[i] <- thruster(ACT, phase_sequence[i, ])
@@ -143,6 +158,6 @@ while(i <= 120) {
   i <- i + 1
   cat(",")
 }
-max(thruster_output) # 70597
-ACT
+max(thruster_output) 
+
 
