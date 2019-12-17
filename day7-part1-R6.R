@@ -1,10 +1,9 @@
-# day 7 with R6 
+# day 7 part 1 (no feedback) with R6 
 
-library(tidyverse)
 library(R6)
 
-# an amplifier program
-ACT <- c(3,31,3,32,1002,32,10,32,1001,31,-2,31,1007,31,0,33,1002,33,7,33,1,33,31,31,1,32,31,31,4,31,99,0,0,0)
+# Amplifier program
+ACT <- c(3,8,1001,8,10,8,105,1,0,0,21,34,59,68,89,102,183,264,345,426,99999,3,9,102,5,9,9,1001,9,5,9,4,9,99,3,9,101,3,9,9,1002,9,5,9,101,5,9,9,1002,9,3,9,1001,9,5,9,4,9,99,3,9,101,5,9,9,4,9,99,3,9,102,4,9,9,101,3,9,9,102,5,9,9,101,4,9,9,4,9,99,3,9,1002,9,5,9,1001,9,2,9,4,9,99,3,9,1002,9,2,9,4,9,3,9,101,2,9,9,4,9,3,9,1001,9,2,9,4,9,3,9,101,1,9,9,4,9,3,9,102,2,9,9,4,9,3,9,1001,9,2,9,4,9,3,9,1001,9,2,9,4,9,3,9,1001,9,2,9,4,9,3,9,1001,9,2,9,4,9,3,9,102,2,9,9,4,9,99,3,9,1001,9,1,9,4,9,3,9,102,2,9,9,4,9,3,9,102,2,9,9,4,9,3,9,101,1,9,9,4,9,3,9,101,1,9,9,4,9,3,9,102,2,9,9,4,9,3,9,102,2,9,9,4,9,3,9,101,1,9,9,4,9,3,9,1001,9,2,9,4,9,3,9,1001,9,2,9,4,9,99,3,9,1002,9,2,9,4,9,3,9,102,2,9,9,4,9,3,9,102,2,9,9,4,9,3,9,1001,9,2,9,4,9,3,9,1001,9,2,9,4,9,3,9,102,2,9,9,4,9,3,9,101,1,9,9,4,9,3,9,1001,9,1,9,4,9,3,9,1002,9,2,9,4,9,3,9,102,2,9,9,4,9,99,3,9,101,1,9,9,4,9,3,9,1002,9,2,9,4,9,3,9,102,2,9,9,4,9,3,9,1002,9,2,9,4,9,3,9,102,2,9,9,4,9,3,9,1002,9,2,9,4,9,3,9,102,2,9,9,4,9,3,9,1002,9,2,9,4,9,3,9,101,1,9,9,4,9,3,9,101,2,9,9,4,9,99,3,9,1001,9,1,9,4,9,3,9,1001,9,2,9,4,9,3,9,101,1,9,9,4,9,3,9,102,2,9,9,4,9,3,9,1001,9,2,9,4,9,3,9,1002,9,2,9,4,9,3,9,101,1,9,9,4,9,3,9,1001,9,1,9,4,9,3,9,1001,9,2,9,4,9,3,9,1002,9,2,9,4,9,99)
 
 Amp <- R6Class("Amp",
   public = list(
@@ -24,14 +23,11 @@ Amp <- R6Class("Amp",
       self$ptr <- self$ptr + 2
     },
     
-    # continue running from current position with one input 
-    # stop when a second input is requested or the Opcode is 99
-    # and return the last output produced
+    # No feedback, single input
+    # run until Opcode is 99
+    # return the last output produced
     
     run = function(input) {
-      input_available <- TRUE
-      output_collected <- FALSE
-      Opcode <- self$pgm[self$pgm[self$ptr + 1] + 1] 
       
       while(TRUE) {
         
@@ -59,19 +55,13 @@ Amp <- R6Class("Amp",
           self$ptr <- self$ptr + 4
           
         } else if(Opcode == 3) {
-          if(input_available) {
-            self$pgm[values[1]] <- input
-            self$ptr <- self$ptr + 2
-            input_available <- FALSE
-          } else {
-            if(output_collected) return(output)
-            else return("No output")
-          }
-          
+          # simpler than feedback version
+          self$pgm[values[1]] <- input
+          self$ptr <- self$ptr + 2
+            
         } else if(Opcode == 4) {
           output <- self$pgm[values[1]]
           self$ptr <- self$ptr + 2
-          output_collected <- TRUE
           
         } else if(Opcode == 5) {
           if(self$pgm[values[1]] != 0) self$ptr <- self$pgm[values[2]] 
@@ -96,32 +86,21 @@ Amp <- R6Class("Amp",
         }
       }
       
-      if(output_collected) return(output)
-      else return("No output")
+      return("No output")
       }
   )
 )
 
-A <- Amp$new(ACT, phase = 4)$run(0)
-
-A$ptr  
-A$phase
-B$phase
-
-ACT[32]
-A$pgm[32]
-B$pgm[32]
-A$ptr
-B$ptr
-
-A$run(0)  
-A$halt
-A$ptr
-B$run(0)
-B$halt
-B$ptr
-
-
+perm <- function(v) {
+  n <- length(v)
+  if (n == 1) v
+  else {
+    X <- NULL
+    for (i in 1:n) X <- rbind(X, cbind(v[i], perm(v[-i])))
+    X
+  }
+}
+phase_sequence <- perm(0:4)
 
 thruster <- function(ACT, phase = phase_sequence) {
   A <- Amp$new(ACT, phase = phase_sequence[1])$run(0)
@@ -131,9 +110,6 @@ thruster <- function(ACT, phase = phase_sequence) {
   E <- Amp$new(ACT, phase = phase_sequence[5])$run(D)
   return(E)
 }
-thruster(ACT, phase = phase_sequence[1, ])
-
-# Find max thruster output
 
 thruster_output <- as.vector(120)
 i <- 1 
@@ -144,5 +120,5 @@ while(i <= 120) {
   cat(",")
 }
 max(thruster_output) # 70597
-ACT
+
 
