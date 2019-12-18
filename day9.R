@@ -106,6 +106,8 @@ A$pgm[1:50]
 A$run(0) # object output not found
 A$halt
 A$ptr
+A$pgm[2019:2021] # Opcode 9 did not work
+      
 
 # no phase, so commented that out
 # no input so no worries about that parameter or the pause behavior
