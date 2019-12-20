@@ -48,7 +48,6 @@ ast <-
   filter(asteroid_here == TRUE) %>% # just asteroid
   mutate(id = 1:n()) %>%
   select(id, x, y)
-View(ast)
 
 ############
 
@@ -95,6 +94,49 @@ ggplot() +
   labs(color = "Quadrant") +
   theme_minimal()
 
+# Now a function that takes a slope 
+# goes out to find an asteroid
+# if found it eliminates it and ups its hit count
+library(R6)
+
+Asteroids <- 
+  R6Class("Asteroids", 
+          
+    public = list(
+      hits = NULL,
+      map = NULL,
+
+      initialize = function(map) {
+        self$map <- map
+        self$hits <- 0
+        
+        private$slopes <-
+          ast %>%
+          filter(x != 19 | y != 14) %>%
+          mutate(slope  = -(y - 14) / (x - 19) ) %>%
+          mutate(
+            quadrant = case_when(
+              (x - 19) >=0 & (y - 14) >  0 ~ 1,
+              (x - 19) >=0 & (y - 14) <= 0 ~ 2,
+              (x - 19) < 0 & (y - 14) <= 0 ~ 3,
+              (x - 19) < 0 & (y - 14) >  0 ~ 4,
+              TRUE ~ NA_real_
+            )
+          ) %>% 
+          arrange(quadrant, desc(slope))
+      }
+      
+    ),
+    
+    private = list(
+      slopes = NULL
+      
+    ))
+
+A <- Asteroids$new(map = ast)
+A$hits
+A$slopes
+
 # The laser location is given
 # Need the increments for rotating the laser
 #   move along the perimeter adding 1 to x until it reaches the max
@@ -108,16 +150,6 @@ ggplot() +
 # Eliminate the asteroid
 # Create an R6 object to keep track of remaining asteroids and laser direction
 
-Asteroids  <- R6Class("Asteroids",
-  public = list(
-  initialize = function(map) {
-  },
-  fire = function
-  
-    
-  )
-)
-)
 
 asteroid = function(x, y) {
   if(self$ast(x, y) == TRUE) TRUE
