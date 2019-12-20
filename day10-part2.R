@@ -57,14 +57,44 @@ ast_here <- function(X, Y) {
 }
 ast_here(19, 14)
 
-rise <- c(rep(0, 25), 0:24, rep(25, 25), 25:1)
+# angles for gun
+# these are not enough
 run <- c(0:24, rep(25, 25), 25:1, rep(0, 25))
-slopes <- tibble(y = rise, x = run) 
-ggplot(slopes, aes(x = x, y = -y, group = 1)) + geom_point()
+run <- c(run[-(1:19)], run[1:19])
+run <- run - 19
 
-rise <- c(rep(-14, 25-19), -14:(25-14), rep(25, 19), 25:0, rep(25-19))
+rise <- c(rep(0, 25), 0:24, rep(25, 25), 25:1)
+rise <- c(rise[-(1:19)], rise[1:19])
+rise <- rise - 14
+perimeter <- tibble(y = rise, x = run)
 
-run <- 19:(25-19), 
+# instead build slopes to all the other asteroids
+slopes <-
+  ast %>%
+  filter(x != 19 | y != 14) %>%
+  mutate(slope  = -(y - 14) / (x - 19) ) %>%
+  mutate(
+    quadrant = case_when(
+      (x - 19) >=0 & (y - 14) >  0 ~ 1,
+      (x - 19) >=0 & (y - 14) <= 0 ~ 2,
+      (x - 19) < 0 & (y - 14) <= 0 ~ 3,
+      (x - 19) < 0 & (y - 14) >  0 ~ 4,
+      TRUE ~ NA_real_
+    )
+  ) %>% 
+  arrange(quadrant, desc(slope))
+names(slopes)
+
+ggplot() + 
+  # geom_point(data = perimeter, aes(x = x, y = y)) +
+  geom_point(data = ast, aes(x = x - 19, y = (y - 14)), symbol = "a", color = "red") +
+  geom_segment(data = slopes, aes(xend = x - 19, yend = y - 14, x = 0, y = 0, color = factor(quadrant))) +
+  scale_color_discrete() +
+  scale_y_continuous(breaks = c(-14, -6, 0, 6, 11)) +
+  scale_x_continuous(breaks = c(-19, -12, -6, 0, 6)) +
+  labs(color = "Quadrant") +
+  theme_minimal()
+
 # The laser location is given
 # Need the increments for rotating the laser
 #   move along the perimeter adding 1 to x until it reaches the max
