@@ -27,6 +27,14 @@ gravity <- function(position, velocity) {
   rowSums(sign(-outer(position, position, FUN = "-")))
 }
 
+gravity_fast <- function(position, velocity) {
+  .rowSums(sign(-outer(position, position, FUN = "-")), 4, 4, na.rm = FALSE)
+}
+
+position <- 1:4
+velocity <- rep(0, 4)
+outer(position, position, FUN = "-")
+
 velocity <- function(p, v) {
   return(p + v)
 }
